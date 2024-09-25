@@ -1,7 +1,7 @@
 {
   "name": "maegashira",
   "description": "Maegashira, a fast and dynamic reverse proxy based on the Bun runtime.",
-  "author": "Guillaume Meyer <https://twitter.com/guillaumemeyer>",
+  "author": "Guillaume Meyer <> (https://twitter.com/guillaumemeyer)",
   "keywords": [
     "reverse-proxy",
     "bun",
@@ -33,6 +33,7 @@
     "build:core": "bun build ./src/core.js --target bun --outdir ./dist/build --entry-naming maegashira-core.js --sourcemap=external",
     "build:cli": "bun build ./src/cli.js --target bun --outdir ./dist/build --entry-naming maegashira-cli.js --sourcemap=external",
     "compile": "bun build ./src/cli.js --compile --minify --outfile ./dist/bin/maegashira",
+    "publish": "npm publish --access=public",
     "docker:build": "docker build -t maegashira .",
     "docker:run": "docker run -d --name maegashira -p 3000:3000 --rm maegashira",
     "prepare": "husky"
