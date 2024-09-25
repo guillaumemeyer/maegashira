@@ -7,6 +7,9 @@ services:
       # Accept connections from any IP / hostname
       - MAEGASHIRA_HOSTNAME=0.0.0.0
       - MAEGASHIRA_PORT=8080
+      - MAEGASHIRA_REDIS_HOST=redis
+      - MAEGASHIRA_REDIS_PORT=6379
+      - MAEGASHIRA_REDIS_PASSWORD=password
       # Must be set to true to enable the healthcheck
       - MAEGASHIRA_API=true
       - MAEGASHIRA_API_PORT=8081
@@ -21,13 +24,27 @@ services:
       retries: 5
       start_period: 30s
     ports:
+      - "8080:8080"
       # Publish the proxy API on port 8081
       - "8081:8081"
-      - "8080:8080"
     networks:
       - proxy
       # Give access to the services to be published
       - apps
+
+  redis:
+    container_name: redis
+    image: redis
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+    command: redis-server --requirepass password
+    expose:
+      - "6379"
+    networks:
+      - proxy
 
   web:
     container_name: web
