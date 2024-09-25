@@ -1,0 +1,60 @@
+services:
+  maegashira:
+    container_name: maegashira
+    image: maegashira
+    build: ${PWD}
+    environment:
+      # Accept connections from any IP / hostname
+      - MAEGASHIRA_HOSTNAME=0.0.0.0
+      - MAEGASHIRA_PORT=8080
+      # Must be set to true to enable the healthcheck
+      - MAEGASHIRA_API=true
+      - MAEGASHIRA_API_PORT=8081
+      - MAEGASHIRA_SERVICE_DISCOVERY=docker
+    volumes:
+      # Mount the Docker socket to allow the proxy to access the Docker API
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/health"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    ports:
+      # Publish the proxy API on port 8081
+      - "8081:8081"
+      - "8080:8080"
+    networks:
+      - proxy
+      # Give access to the services to be published
+      - apps
+
+  web:
+    container_name: web
+    image: app/web
+    expose:
+      - "3000"
+    networks:
+      - apps
+    # Defines the proxy routing rules for this service
+    labels:
+      - "maegashira.public.hostname=web.app.com"
+      - "maegashira.public.path="
+      - "maegashira.private.port=3000"
+
+  api:
+    container_name: api
+    image: app/api
+    expose:
+      - "3000"
+    networks:
+      - apps
+    # Defines the proxy routing rules for this service
+    labels:
+      - "maegashira.public.hostname=web.app.com"
+      - "maegashira.public.path=/api"
+      - "maegashira.private.port=3000"
+
+networks:
+  proxy:
+  apps:

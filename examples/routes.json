@@ -1,0 +1,20 @@
+[
+  {
+    "hostname": "mk-api-debug-gme.majora.agency",
+    "path": "",
+    "middlewares": {
+      "preProcessing": [
+        "microsoftGraphPreProcessing"
+      ],
+      "postProcessing": [
+        "microsoftGraphPostProcessing"
+      ]
+    },
+    "targets": [
+      {
+        "type": "forward",
+        "url": "https://graph.microsoft.com"
+      }
+    ]
+  }
+]
