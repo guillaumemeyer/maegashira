@@ -3,7 +3,6 @@
 
 # Allow files and directories
 !/package.json
-!/bun.lockb
 !/src
 
 # Ignore unnecessary files inside allowed directories

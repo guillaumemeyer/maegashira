@@ -1,7 +1,7 @@
 {
   "name": "maegashira",
   "description": "Maegashira, a fast and dynamic reverse proxy based on the Bun runtime.",
-  "author": "Guillaume Meyer <> (https://twitter.com/guillaumemeyer)",
+  "author": "Guillaume Meyer (https://twitter.com/guillaumemeyer)",
   "keywords": [
     "reverse-proxy",
     "bun",
@@ -14,7 +14,7 @@
     "url": "https://github.com/guillaumemeyer/maegashira/issues"
   },
   "license": "Apache-2.0",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/build/maegashira-core.js",
   "type": "module",
   "bin": {
@@ -35,8 +35,9 @@
     "compile": "bun build ./src/cli.js --compile --minify --outfile ./dist/bin/maegashira",
     "publish": "npm publish --access=public",
     "docker:build": "docker build -t maegashira .",
-    "docker:run": "docker run -d --name maegashira -p 3000:3000 --rm maegashira",
-    "prepare": "husky"
+    "docker:run": "docker compose --env-file .env -p maegashira up -d",
+    "docker:perf": "bunx autocannon -c 10 -p 1 -d 10 http://localhost:8080/package.json",
+    "prepare": "bunx husky"
   },
   "devDependencies": {
     "@types/ajv": "^1.0.0",
@@ -64,13 +65,16 @@
     ]
   },
   "dependencies": {
+    "@types/autocannon": "^7.12.5",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
+    "autocannon": "^7.15.0",
     "bullmq": "^5.13.2",
     "bun": "^1.1.29",
     "commander": "^12.1.0",
     "ioredis": "^5.4.1",
     "pino": "^9.4.0",
-    "pino-pretty": "^11.2.2"
+    "pino-pretty": "^11.2.2",
+    "prom-client": "^15.1.3"
   }
 }

@@ -1,0 +1,49 @@
+services:
+  maegashira:
+    container_name: maegashira
+    image: maegashira
+    build: ${PWD}
+    restart: unless-stopped
+    environment:
+      - MAEGASHIRA_HOSTNAME=${MAEGASHIRA_HOSTNAME}
+      - MAEGASHIRA_PORT=${MAEGASHIRA_PORT}
+      - MAEGASHIRA_CLUSTERING=${MAEGASHIRA_CLUSTERING}
+      - MAEGASHIRA_REDIS_HOST=${MAEGASHIRA_REDIS_HOST}
+      - MAEGASHIRA_REDIS_PORT=${MAEGASHIRA_REDIS_PORT}
+      - MAEGASHIRA_REDIS_PASSWORD=${MAEGASHIRA_REDIS_PASSWORD}
+      - MAEGASHIRA_API_ENABLED=${MAEGASHIRA_API_ENABLED}
+      - MAEGASHIRA_API_HOSTNAME=${MAEGASHIRA_API_HOSTNAME}
+      - MAEGASHIRA_API_PORT=${MAEGASHIRA_API_PORT}
+      - MAEGASHIRA_API_KEY=${MAEGASHIRA_API_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:${MAEGASHIRA_API_PORT}/health"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+    ports:
+      - "8080:8080"
+      - "8081:${MAEGASHIRA_API_PORT}"
+    networks:
+      - proxy
+
+  maegashira_redis:
+    container_name: maegashira_redis
+    image: redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+    command: redis-server --requirepass password
+    expose:
+      - ${MAEGASHIRA_REDIS_PORT}
+    ports:
+      - "${MAEGASHIRA_REDIS_PORT}:${MAEGASHIRA_REDIS_PORT}"
+    networks:
+      - proxy
+
+networks:
+  proxy:

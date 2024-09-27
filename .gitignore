@@ -1,5 +1,7 @@
 .vscode
 dist
+dev-routes.json
 node_modules
 .env
 bun.lockb
+NOTES.md

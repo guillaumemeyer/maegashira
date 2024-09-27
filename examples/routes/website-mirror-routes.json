@@ -1,0 +1,12 @@
+[
+  {
+    "hostname": "localhost",
+    "path": "",
+    "targets": [
+      {
+        "type": "forward",
+        "url": "https://github.com"
+      }
+    ]
+  }
+]

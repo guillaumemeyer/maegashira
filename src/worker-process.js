@@ -3,11 +3,28 @@ import { Worker } from 'bullmq'
 import { randomUUID } from 'node:crypto'
 import { serve, file, env } from 'bun'
 import { logger, logLevel } from './libs/logger.js'
-import { ProxyError, ProxyErrorCause } from './libs/errors.js'
 import { initializeQueues, queues, createPostTransactionJob } from './libs/queues.js'
+import { ProxyError, ProxyErrorCause } from './libs/errors.js'
+import { collectDefaultMetrics, Counter } from 'prom-client'
+
+// Ignored because importing json with assertions is not supported by eslint
+// @ts-ignore
 import pck from '../package.json'
+import { URL } from 'node:url'
 
 const LOG_PREFIX = 'Worker:'
+
+// Enable collection of default metrics
+collectDefaultMetrics({
+  // These are the default buckets
+  gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
+})
+
+const responsesCodesCounter = new Counter({
+  name: 'responses_codes',
+  help: 'Example of a histogram',
+  labelNames: ['code']
+})
 
 /** @type {import('bun').Server} */
 let proxyServer
@@ -26,7 +43,8 @@ let routingTable = []
 /**
  * @typedef {object} PreProcessingMiddlewareState
  * @property {Transaction} transaction - The transaction
- * @property {Request} request - The request
+ * @property {object} headers - The request headers
+ * @property {object|string} body - The request body
  * @property {MiddlewareAction} [action] - The action
  * @property {TransactionCancellationReason} [cancellationReason] - The reason for the cancellation
  */
@@ -34,33 +52,22 @@ let routingTable = []
 /**
  * @typedef {object} PostProcessingMiddlewareState
  * @property {Transaction} transaction - The transaction
- * @property {Response} response - The response
+ * @property {object} headers - The response headers
+ * @property {object|string} body - The response body
  * @property {MiddlewareAction} [action] - The action
  * @property {TransactionCancellationReason} [cancellationReason] - The reason for the cancellation
  */
 
 /**
- * @typedef {Function} PreProcessingMiddlewareHandler
- * @param {PreProcessingMiddlewareState} state - The state
- * @returns {PreProcessingMiddlewareState} The state
- */
-
-/**
- * @typedef {Function} PostProcessingMiddlewareHandler
- * @param {PostProcessingMiddlewareState} state - The state
- * @returns {PostProcessingMiddlewareState} The state
- */
-
-/**
  * @typedef {object} PreProcessingMiddleware
  * @property {string} key - The middleware key
- * @property {PreProcessingMiddlewareHandler} handler - The middleware handler
+ * @property {Function} handler - The middleware handler
  */
 
 /**
  * @typedef {object} PostProcessingMiddleware
  * @property {string} key - The middleware key
- * @property {PostProcessingMiddlewareHandler} handler - The middleware handler
+ * @property {Function} handler - The middleware handler
  */
 
 /** @type {Middlewares} */
@@ -110,7 +117,7 @@ export function startWorkerProcess ({
       /**
        * @function primmaryProcessMessageHandler
        * @description Handles messages sent from the primary process of the cluster
-       * @param {import('./primary-process.js').PrimaryProcessShutdownMessage|import('./primary-process.js').PrimaryProcessUpdateRoutingTableMessage} message - The message object
+       * @param {import('./primary-process.js').PrimaryProcessShutdownMessage|import('./primary-process.js').PrimaryProcessUpdateRoutingTableMessage|import('./primary-process.js').PrimaryProcessMetricsRequestMessage} message - The message object
        */
       function primmaryProcessMessageHandler (message) {
         switch (message.type) {
@@ -128,6 +135,9 @@ export function startWorkerProcess ({
             // Update the routing table
             if (message.routingTable) { routingTable = message.routingTable }
             logger.debug({ routingTable: message.routingTable }, `${LOG_PREFIX} Routing table updated`)
+            break
+          case 'prom-client:getMetricsReq':
+            logger.debug({ message }, `${LOG_PREFIX} Received request for metrics from the primary process`)
             break
           default:
             logger.warn({ message }, `${LOG_PREFIX} Unknown message type received from the primary process`)
@@ -192,7 +202,7 @@ export const postTransactionProcessor = async (job) => {
 
 /** @typedef {TransactionMetadata & RequestMetadata & TargetMetadata &  ResponseMetadata} Transaction */
 
-/** @typedef {'fetch_failed'|'timeout'|'route_match'|'middleware_cancelled'|'unknown'} TransactionCancellationReason */
+/** @typedef {'fetch_failed'|'timeout'|'route_match'|'middleware_cancelled'|string} TransactionCancellationReason */
 
 /**
  * @typedef {object} TransactionMetadata
@@ -324,9 +334,12 @@ async function requestHandler (request, server) {
             const middleware = middlewareFindResult
             if (middleware.handler) {
               const middlewareHandler = middleware.handler
+              /** @type {PreProcessingMiddlewareState} */
               const initialState = {
                 transaction,
-                req: request
+                headers: request.headers.toJSON(),
+                body: request.body,
+                action: 'next'
               }
               /** @type {PreProcessingMiddlewareState} */
               const updatedState = await middlewareHandler(initialState)
@@ -334,11 +347,19 @@ async function requestHandler (request, server) {
                 case 'cancel':
                   logger.debug({ middlewareKey }, 'Middleware cancelled the transaction')
                   transaction.transaction_cancelled = true
-                  transaction.transaction_cancellation_reason = updatedState.cancellationReason || 'unknown'
+                  transaction.transaction_cancellation_reason = updatedState.cancellationReason || `Cancelled by ${middlewareKey}`
                   response = new Response('Request cancelled', { status: 400 })
                   shouldCancel = true
                   break
                 case 'next':
+                  // Remove all request headers
+                  request.headers.forEach((value, key) => {
+                    request.headers.delete(key)
+                  })
+                  // Add the updated headers
+                  updatedState.headers.forEach((value, key) => {
+                    request.headers.set(key, value)
+                  })
                   logger.debug({ middlewareKey }, 'Middleware passed the transaction')
                   break
                 default:
@@ -498,6 +519,8 @@ async function requestHandler (request, server) {
       response.headers.set(`x-${pck.name}-transaction-overhead`, String(transaction.transaction_total_overhead))
       response.headers.set(`x-${pck.name}-transaction-overhead-percentage`, String(transaction.transaction_overhead_percentage))
     }
+
+    responsesCodesCounter.inc({ code: response.status })
 
     return response
   } catch (error) {

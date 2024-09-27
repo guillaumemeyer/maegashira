@@ -6,6 +6,18 @@ import { setRoutingTable, propagateRoutingTableToWorkers } from './libs/routing-
 import { discoverRoutesFromDocker } from './libs/discovery.js'
 import { startApi, stopApi } from './libs/api.js'
 import { stopQueues, initializeQueues } from './libs/queues.js'
+// import { collectDefaultMetrics, Gauge } from 'prom-client'
+
+// // Enable collection of default metrics
+// collectDefaultMetrics({
+//   // These are the default buckets
+//   gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
+// })
+
+// const clusterWorkers = new Gauge({
+//   name: 'cluster_workers',
+//   help: 'Number of cluster workers'
+// })
 
 const LOG_PREFIX = 'Primary:'
 
@@ -39,6 +51,12 @@ let serviceDiscoveryTimer
 /**
  * @typedef {object} PrimaryProcessShutdownMessage
  * @property {'shutdown'} type - The message type
+ */
+
+/**
+ * @typedef {object} PrimaryProcessMetricsRequestMessage
+ * @property {'prom-client:getMetricsReq'} type - The message type
+ * @property {number} requestId - The request ID
  */
 
 /**
@@ -76,7 +94,11 @@ export async function startPrimaryProcess ({
       api.key = api.key || 'api'
       api.port = api.port || 8081
       api.hostname = api.hostname || '0.0.0.0'
-      startApi(api)
+      try {
+        startApi(api)
+      } catch (error) {
+        console.error(error)
+      }
     }
 
     // Define cluster parallelism
@@ -95,6 +117,8 @@ export async function startPrimaryProcess ({
         workersCount = clustering <= availableCpus ? clustering : availableCpus
         break
     }
+
+    // clusterWorkers.set(workersCount)
 
     logger.info({ clustering, availableCpus, workersCount }, `${LOG_PREFIX} Starting...`)
 
@@ -117,6 +141,9 @@ export async function startPrimaryProcess ({
                 type: 'routingtable',
                 routingTable
               })
+              break
+            default:
+              logger.warn({ worker_id: worker.id, message }, `${LOG_PREFIX} Worker message`)
               break
           }
         })

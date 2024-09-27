@@ -1,6 +1,9 @@
 import { serve } from 'bun'
 import { getRoutingTable, setRoutingTable } from './routing-table.js'
 import { logger } from './logger.js'
+import { ProxyError, ProxyErrorCause } from './errors.js'
+import { getOpenApiSpecification, getOpenApiExplorer } from './openapi.js'
+import { aggregatorRegistry } from './metrics-aggragator.js'
 
 /** @type {import('bun').Server} */
 let apiServer
@@ -8,8 +11,8 @@ let apiServer
 /**
  * @typedef {object} ApiOptions
  * @property {boolean} enabled - Enable the API
- * @property {number} port - The API port
- * @property {string} hostname - The API hostname
+ * @property {number} [port] - The API port
+ * @property {string} [hostname] - The API hostname
  * @property {string} [key] - The API key
  */
 
@@ -24,10 +27,26 @@ let apiOptions
  */
 export async function apiRequestHandler (req) {
   const url = new URL(req.url)
+  const baseUrl = url.protocol + '//' + url.hostname + (url.port ? ':' + url.port : '')
 
   // Anonmyous endpoints
+  if (url.pathname === '' || url.pathname === '/') {
+    return getOpenApiSpecification(baseUrl)
+  }
+  if (url.pathname.startsWith('/explorer')) {
+    return getOpenApiExplorer(baseUrl)
+  }
   if (url.pathname === '/health') {
-    return new Response('OK', { status: 200 })
+    return Response.json({ status: 'ok' }, { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  if (url.pathname === '/metrics') {
+    const metrics = await aggregatorRegistry.clusterMetrics()
+    return new Response(metrics, {
+      status: 200,
+      headers: {
+        'Content-Type': aggregatorRegistry.contentType
+      }
+    })
   }
 
   // Authenticate endpoints
@@ -74,7 +93,9 @@ export function startApi (options) {
     })
     logger.info(options, `Management API started on ${options.hostname}:${options.port}`)
   } catch (error) {
-    logger.error(error, 'Failed to start the management API')
+    throw new ApiError('Failed to start the management API',
+      new ProxyErrorCause('api', null, error)
+    )
   }
 }
 
@@ -88,3 +109,5 @@ export function stopApi () {
     apiServer.stop(true)
   }
 }
+
+class ApiError extends ProxyError { }

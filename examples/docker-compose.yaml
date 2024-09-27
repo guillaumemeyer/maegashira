@@ -2,7 +2,6 @@ services:
   maegashira:
     container_name: maegashira
     image: maegashira
-    build: ${PWD}
     environment:
       # Accept connections from any IP / hostname
       - MAEGASHIRA_HOSTNAME=0.0.0.0

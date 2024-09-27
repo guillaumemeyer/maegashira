@@ -1,71 +1,56 @@
-# Maegashira
-
-A **fast** and **dynamic** reverse proxy based on the [Bun runtime](https://bun.sh/).  
-It is designed to be easy to use, configure and extend, with:
-- a simple configuration file format
-- a RESTful API for managing the proxy
-- a middleware system for adding custom logic
-
-It is used to create full-featured custom reverse proxy for different apps, like [GraphShield](https://github.com/guillaumemeyer/graphshield), a reverse proxy specifically designed for the Microsoft Graph.
+```
+  __  __                                        _       _                
+ |  \/  |   __ _    ___    __ _    __ _   ___  | |__   (_)  _ __    __ _ 
+ | |\/| |  / _` |  / _ \  / _` |  / _` | / __| | '_ \  | | | '__|  / _` |
+ | |  | | | (_| | |  __/ | (_| | | (_| | \__ \ | | | | | | | |    | (_| |
+ |_|  |_|  \__,_|  \___|  \__, |  \__,_| |___/ |_| |_| |_| |_|     \__,_|
+                          |___/                                          
+```
+A **fast** and **dynamic** reverse proxy based on the [Bun runtime](https://bun.sh/), designed to be easy to use, configure and extend.  
+Use it off-the-shelf from Docker, a CLI or build your own custom reverse proxy.
 
 ## Key Features
-
 Routing:
 - Hostname and path-based resolver
-- HTTP Forwarding
-- Customizable timeouts
-- Static files serving
-- Load balancing
-- SSL offloading
+- HTTP Forwarding and static files serving
+- Upstreams load balancing
 
 Middlewares
-- Pre-processing: Manipulating request headers, query string, and request bodies.
-- Post-processing: Manipulating response headers, query string, and response bodies.
+- Write custom logic with JavaScript or TypeScript
+- Pre-processing: Manipulating request headers, query string, and request body.
+- Post-processing: Manipulating response headers, query string, and response body.
 
 Clustering:
-- Load balancing across worker process
-- Load balancing across servers
+- Distribute workload across worker process
+- Distribute workload across servers
+- Centralized state with Redis
 
 Management API:
 - Routing table: Defining routes and their corresponding targets.
 - Proxy health checks: Monitoring the health of the proxy.
 - Metrics: Collecting and exposing Prometheus metrics for monitoring and alerting.
-- Protection through server name and API key.
-
 
 ## Quick Start
+The easieat way to get started is to use Docker:
+```bash
+docker run -p 8080:8080 -p 8081:8081 maegashira
+```
 
-Run from npm:
+Alternatively, if you have bun installed, you can run it directly:
 ```bash
 bunx maegashira
 ```
 
-Install globally from npm:
+Or install it globally:
 ```bash
 bun install -g maegashira
 maegashira
 ```
 
-Using Docker:
-```bash
-docker run -p 8080:8080 -p 8081:8081 maegashira
-```
-
-
-
 ## Build your own reverse proxy
-
 Look at the [custom-proxy](./examples/custom-proxy.js) example for a minimalistic example of a custom reverse proxy.
 
-Run your proxy with:
-```bash
-bun myproxy.js
-```
-
-See [examples](./examples) for more details.
-
 ## Roadmap
-
 Load balancing:
 - Regular health monitoring of backend servers and rerouting traffic in case of failure
 - Round-robin strategy
@@ -74,6 +59,7 @@ Load balancing:
 - Sticky sessions strategy
 
 Routing:
+- SSL offloading
 - Custom resolver middleware
 - Host header rewriting
 - "redirect" target type
@@ -101,6 +87,7 @@ Security:
 - IP filtering
 - Rate limiting
 
-Logging:
+Monitoring:
 - File transport
+- Prometheus metrics
 - OpenTelmetry integration

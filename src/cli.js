@@ -3,6 +3,7 @@
 // N.B: Multi-word options such as "--template-engine" are camel-cased, becoming program.opts().templateEngine etc.
 
 import { file, env } from 'bun'
+// @ts-ignore
 import pck from '../package.json'
 import { EOL } from 'node:os'
 import { logger } from './libs/logger.js'
