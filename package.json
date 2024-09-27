@@ -14,7 +14,7 @@
     "url": "https://github.com/guillaumemeyer/maegashira/issues"
   },
   "license": "Apache-2.0",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "dist/build/maegashira-core.js",
   "type": "module",
   "bin": {
